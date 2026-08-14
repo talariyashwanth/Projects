@@ -6,85 +6,88 @@ import SessionAnalytics from './components/SessionAnalytics';
 import ModelInsights from './components/ModelInsights';
 import { fetchHealth, predictCognitiveLoad } from './api';
 
+// Preset behavioural profiles used by the dashboard buttons and the initial load.
+// These are INPUT feature vectors; every score/probability shown in the UI comes
+// back from the real model via the API, never hardcoded.
+const PRESETS = {
+  low: {
+    typing_speed_wpm: 68.0,
+    avg_keystroke_interval_ms: 175.0,
+    backspace_ratio: 0.03,
+    pause_frequency_per_min: 2,
+    mouse_velocity_px_s: 430.0,
+    mouse_distance_px: 1100.0,
+    click_frequency_per_min: 14.0,
+    idle_time_seconds: 3.5,
+    error_rate: 0.03,
+    response_time_seconds: 4.2,
+    retry_count: 0,
+    context_switches_per_min: 1
+  },
+  medium: {
+    typing_speed_wpm: 46.0,
+    avg_keystroke_interval_ms: 260.0,
+    backspace_ratio: 0.11,
+    pause_frequency_per_min: 6,
+    mouse_velocity_px_s: 280.0,
+    mouse_distance_px: 1750.0,
+    click_frequency_per_min: 22.0,
+    idle_time_seconds: 7.5,
+    error_rate: 0.10,
+    response_time_seconds: 8.5,
+    retry_count: 2,
+    context_switches_per_min: 4
+  },
+  high: {
+    typing_speed_wpm: 24.0,
+    avg_keystroke_interval_ms: 420.0,
+    backspace_ratio: 0.24,
+    pause_frequency_per_min: 13,
+    mouse_velocity_px_s: 160.0,
+    mouse_distance_px: 2600.0,
+    click_frequency_per_min: 33.0,
+    idle_time_seconds: 14.5,
+    error_rate: 0.25,
+    response_time_seconds: 16.0,
+    retry_count: 5,
+    context_switches_per_min: 9
+  }
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [healthData, setHealthData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [error, setError] = useState(null);
 
-  // Default sample cognitive load state
-  const [dashboardData, setDashboardData] = useState({
-    predicted_state: 'High',
-    cognitive_load_score: 78,
-    probabilities: { Low: 0.05, Medium: 0.21, High: 0.74 },
-    top_contributing_signals: [
-      { display_name: 'Error Rate', value: '21.0%', is_elevating_load: true, z_score: 1.8 },
-      { display_name: 'Pause Frequency', value: '11 / min', is_elevating_load: true, z_score: 1.5 },
-      { display_name: 'Context Switches', value: '8 / min', is_elevating_load: true, z_score: 1.3 },
-      { display_name: 'Typing Speed', value: '34 WPM', is_elevating_load: true, z_score: -1.2 }
-    ]
-  });
-
+  // On mount, check the API and score a real starting profile through the model.
+  // Nothing is displayed until the backend actually responds, so the dashboard
+  // never shows invented numbers.
   useEffect(() => {
-    async function checkSystem() {
-      const data = await fetchHealth();
-      setHealthData(data);
+    async function initialise() {
+      const health = await fetchHealth();
+      setHealthData(health);
+
+      if (health.status !== 'online') {
+        setError('Backend offline. Start it with: uvicorn backend.main:app --reload');
+        return;
+      }
+
+      try {
+        setDashboardData(await predictCognitiveLoad(PRESETS.high));
+      } catch (err) {
+        setError(err.message);
+      }
     }
-    checkSystem();
+    initialise();
   }, []);
 
   const handleSimulatePreset = async (presetType) => {
-    let presetFeats = {};
-    if (presetType === 'low') {
-      presetFeats = {
-        typing_speed_wpm: 68.0,
-        avg_keystroke_interval_ms: 175.0,
-        backspace_ratio: 0.03,
-        pause_frequency_per_min: 2,
-        mouse_velocity_px_s: 430.0,
-        mouse_distance_px: 1100.0,
-        click_frequency_per_min: 14.0,
-        idle_time_seconds: 3.5,
-        error_rate: 0.03,
-        response_time_seconds: 4.2,
-        retry_count: 0,
-        context_switches_per_min: 1
-      };
-    } else if (presetType === 'medium') {
-      presetFeats = {
-        typing_speed_wpm: 46.0,
-        avg_keystroke_interval_ms: 260.0,
-        backspace_ratio: 0.11,
-        pause_frequency_per_min: 6,
-        mouse_velocity_px_s: 280.0,
-        mouse_distance_px: 1750.0,
-        click_frequency_per_min: 22.0,
-        idle_time_seconds: 7.5,
-        error_rate: 0.10,
-        response_time_seconds: 8.5,
-        retry_count: 2,
-        context_switches_per_min: 4
-      };
-    } else {
-      presetFeats = {
-        typing_speed_wpm: 24.0,
-        avg_keystroke_interval_ms: 420.0,
-        backspace_ratio: 0.24,
-        pause_frequency_per_min: 13,
-        mouse_velocity_px_s: 160.0,
-        mouse_distance_px: 2600.0,
-        click_frequency_per_min: 33.0,
-        idle_time_seconds: 14.5,
-        error_rate: 0.25,
-        response_time_seconds: 16.0,
-        retry_count: 5,
-        context_switches_per_min: 9
-      };
-    }
-
     try {
-      const res = await predictCognitiveLoad(presetFeats);
-      setDashboardData(res);
-    } catch (e) {
-      console.error(e);
+      setDashboardData(await predictCognitiveLoad(PRESETS[presetType] || PRESETS.high));
+      setError(null);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -94,7 +97,20 @@ export default function App() {
 
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
         {activeTab === 'dashboard' && (
-          <Dashboard currentData={dashboardData} onSimulatePreset={handleSimulatePreset} />
+          error ? (
+            <div className="glass-card" style={{ padding: '48px', textAlign: 'center' }}>
+              <div style={{ color: '#fb7185', fontWeight: 700, marginBottom: '8px' }}>
+                Cannot reach the Cognisense API
+              </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>{error}</div>
+            </div>
+          ) : !dashboardData ? (
+            <div className="glass-card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              Scoring initial behavioural profile through the model...
+            </div>
+          ) : (
+            <Dashboard currentData={dashboardData} onSimulatePreset={handleSimulatePreset} />
+          )
         )}
 
         {activeTab === 'playground' && (

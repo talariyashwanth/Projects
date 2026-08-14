@@ -28,13 +28,22 @@ export default function ModelInsights() {
     );
   }
 
-  const { comparison, feature_importance } = insights;
+  const { comparison, feature_importance, importance_method } = insights;
   const bestModel = comparison.best_model;
   const modelEntries = Object.entries(comparison.models);
 
-  // Extract confusion matrix from best model
   const bestModelData = comparison.models[bestModel];
-  const cm = bestModelData?.confusion_matrix || [[82, 7, 1], [8, 71, 6], [1, 7, 84]];
+  const cm = bestModelData?.confusion_matrix || [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  const modelNames = modelEntries.map(([name]) => name).join(', ');
+
+  // Largest importance value, used to normalise bar widths so the chart scales
+  // to the data instead of relying on a hardcoded multiplier.
+  const maxImportance = Math.max(...feature_importance.map((f) => f.importance), 0.0001);
+
+  const cmTotal = cm.flat().reduce((a, b) => a + b, 0);
+  const severeErrors = (cm[0]?.[2] || 0) + (cm[2]?.[0] || 0);
+  const adjacentErrors =
+    (cm[0]?.[1] || 0) + (cm[1]?.[0] || 0) + (cm[1]?.[2] || 0) + (cm[2]?.[1] || 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -46,7 +55,10 @@ export default function ModelInsights() {
             ML Pipeline & Model Insights Report
           </h2>
           <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-            Empirical evaluation comparing Logistic Regression, Random Forest, and Gradient Boosting
+            Empirical comparison of {modelNames}
+          </p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {comparison.split_strategy} · {comparison.cv_strategy}
           </p>
         </div>
 
@@ -124,7 +136,9 @@ export default function ModelInsights() {
               </div>
 
               <div style={{ marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                5-Fold CV Accuracy: {(data.cv_accuracy_mean * 100).toFixed(1)}%
+                CV macro-F1: {(data.cv_f1_mean * 100).toFixed(1)}%
+                {data.cv_f1_std != null && ` ± ${(data.cv_f1_std * 100).toFixed(1)}%`}
+                {isSelected && ' — selection metric'}
               </div>
             </div>
           );
@@ -136,17 +150,21 @@ export default function ModelInsights() {
         
         {/* Feature Importance Bar Chart */}
         <div className="glass-card">
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <BarChart2 size={18} color="#38bdf8" />
-            Random Forest Feature Importance Ranks
+            Behavioral Feature Importance
           </h3>
+
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
+            {importance_method || 'Permutation importance measured on held-out data.'}
+          </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {feature_importance.map((item, idx) => (
               <div key={item.feature}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>
-                    {idx + 1}. {item.feature.replace(/_/g, ' ').title || item.feature}
+                    {idx + 1}. {item.feature.replace(/_/g, ' ')}
                   </span>
                   <span style={{ fontWeight: 700, color: '#fff' }}>
                     {(item.importance * 100).toFixed(1)}%
@@ -155,7 +173,7 @@ export default function ModelInsights() {
                 <div style={{ height: '6px', width: '100%', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
-                    width: `${item.importance * 100 * 3.5}%`,
+                    width: `${(item.importance / maxImportance) * 100}%`,
                     background: 'linear-gradient(90deg, #3b82f6 0%, #38bdf8 100%)',
                     borderRadius: '3px'
                   }} />
@@ -172,7 +190,7 @@ export default function ModelInsights() {
           </h3>
 
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Actual vs Predicted class distribution across test holdout dataset:
+            Actual vs predicted classes on held-out subjects never seen during training:
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', gap: '8px', textAlign: 'center', fontSize: '0.82rem' }}>
@@ -209,8 +227,19 @@ export default function ModelInsights() {
             ))}
           </div>
 
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '20px' }}>
-            High diagonal values confirm robust classification boundary separation across states.
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '20px', lineHeight: '1.6' }}>
+            <div>
+              <strong style={{ color: 'var(--text-secondary)' }}>Severe errors</strong> (Low↔High):{' '}
+              {severeErrors} ({cmTotal ? ((severeErrors / cmTotal) * 100).toFixed(1) : '0.0'}%)
+            </div>
+            <div>
+              <strong style={{ color: 'var(--text-secondary)' }}>Adjacent errors</strong> (off-by-one):{' '}
+              {adjacentErrors} ({cmTotal ? ((adjacentErrors / cmTotal) * 100).toFixed(1) : '0.0'}%)
+            </div>
+            <div style={{ marginTop: '8px' }}>
+              Errors concentrate on <em>adjacent</em> states — the expected failure mode when
+              discretising a continuum, since "Medium" absorbs ambiguity from both boundaries.
+            </div>
           </div>
         </div>
       </div>
@@ -222,8 +251,13 @@ export default function ModelInsights() {
           Scientific and Ethical Limitations Disclaimer
         </h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-          Cognisense estimates cognitive-load states from observable behavioral interaction patterns. The system is an experimental ML prototype and is not a clinical or psychological diagnostic tool. Synthetic data cannot establish real-world clinical validity. Monitoring should be transparent, consent-based, and minimize sensitive data collection.
+          Cognisense estimates cognitive-load states from observable behavioral interaction patterns. The system is an experimental ML prototype and is not a clinical or psychological diagnostic tool. Monitoring should be transparent, consent-based, and minimize sensitive data collection.
         </p>
+        {comparison.data_provenance && (
+          <p style={{ fontSize: '0.8rem', color: '#fbbf24', lineHeight: '1.6', marginTop: '10px', fontWeight: 600 }}>
+            Data provenance: {comparison.data_provenance}
+          </p>
+        )}
       </div>
     </div>
   );

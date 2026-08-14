@@ -22,3 +22,8 @@ pydantic==2.13.4
 
 # Testing
 pytest==9.1.1
+httpx==0.28.1          # required by fastapi.testclient for the API contract tests
+
+# Notebooks (optional — only needed to re-run notebooks/)
+jupyter==1.1.1
+nbconvert==7.17.1

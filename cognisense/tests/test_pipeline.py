@@ -320,3 +320,105 @@ def test_recovery_not_detected_for_small_change():
 def test_recovery_wording_avoids_clinical_claims():
     message = CognitiveLoadPredictor.calculate_recovery(90, 40)["message"]
     assert "behavioural" in message.lower()
+
+
+# -------------------------------------------------------- API contract
+# These guard the frontend/backend boundary. A real bug lived here: the browser
+# sent attempt_count=0 for an untouched session, the API required >= 1, and every
+# live prediction failed with a silent 422 that the UI swallowed.
+@pytest.fixture(scope="module")
+def client():
+    from fastapi.testclient import TestClient
+    sys.path.insert(0, os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")))
+    from backend.main import app
+    return TestClient(app)
+
+
+def test_raw_events_accepts_a_realistic_typing_window(client):
+    payload = {
+        "duration_seconds": 20.0,
+        "keystroke_timestamps": [1.0, 1.2, 1.5, 2.0, 2.4, 3.1],
+        "backspace_count": 2,
+        "total_keystrokes": 84,
+        "words_typed": 12,
+        "mouse_positions": [],
+        "click_count": 0,
+        "idle_periods_seconds": [],
+        "error_count": 2,
+        "attempt_count": 84,
+        "response_time_sec": 1.7,
+        "retry_count": 0,
+        "context_switches": 0,
+    }
+    res = client.post("/api/predict-raw-events", json=payload)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["predicted_state"] in CLASS_NAMES
+    assert 0 <= body["cognitive_load_score"] <= 100
+    assert "extracted_features" in body
+
+
+def test_raw_events_rejects_zero_attempt_count(client):
+    """
+    attempt_count is the denominator of error_rate, so 0 is genuinely invalid.
+    The contract is asserted here so the frontend keeps clamping it to >= 1
+    instead of silently sending 0 and losing every live prediction.
+    """
+    payload = {
+        "duration_seconds": 5.0,
+        "keystroke_timestamps": [],
+        "backspace_count": 0,
+        "total_keystrokes": 0,
+        "words_typed": 0,
+        "mouse_positions": [],
+        "click_count": 0,
+        "idle_periods_seconds": [],
+        "error_count": 0,
+        "attempt_count": 0,
+        "response_time_sec": 4.0,
+        "retry_count": 0,
+        "context_switches": 0,
+    }
+    assert client.post("/api/predict-raw-events", json=payload).status_code == 422
+
+
+def test_predict_returns_probabilities_that_sum_to_one(client):
+    res = client.post("/api/predict", json={"typing_speed_wpm": 24,
+                                            "error_rate": 0.25})
+    assert res.status_code == 200, res.text
+    probs = res.json()["probabilities"]
+    assert set(probs) == set(CLASS_NAMES)
+    assert abs(sum(probs.values()) - 1.0) < 0.01
+
+
+def test_model_insights_exposes_honesty_metadata(client):
+    """The UI renders these fields; missing ones would silently blank the page."""
+    body = client.get("/api/model-insights").json()
+    comparison = body["comparison"]
+
+    for field in ("best_model", "models", "split_strategy",
+                  "cv_strategy", "data_provenance"):
+        assert field in comparison, f"missing {field}"
+
+    assert "synthetic" in comparison["data_provenance"].lower()
+    assert body["importance_method"]
+
+    for name, model in comparison["models"].items():
+        assert "cv_f1_mean" in model, f"{name} missing cv_f1_mean"
+        assert len(model["confusion_matrix"]) == 3
+
+
+def test_simulate_session_fields_used_by_the_ui(client):
+    body = client.post("/api/simulate-session"
+                       "?duration_minutes=15&session_type=coding_challenge").json()
+    for field in ("average_score", "average_band", "peak_score", "peak_minute",
+                  "duration_minutes", "time_in_states", "timeline"):
+        assert field in body, f"missing {field}"
+
+    assert body["duration_minutes"] == 15
+    assert len(body["timeline"]) == 15
+    assert body["average_band"] in CLASS_NAMES
+    # peak_minute must point at the actual maximum in the timeline.
+    assert body["peak_score"] == max(p["cognitive_load_score"] for p in body["timeline"])
+

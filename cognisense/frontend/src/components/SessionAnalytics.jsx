@@ -31,7 +31,12 @@ export default function SessionAnalytics() {
     );
   }
 
-  const { average_score, peak_score, time_in_states, recovery_analysis, timeline } = sessionData;
+  const { average_score, average_band, peak_score, peak_minute, time_in_states,
+          recovery_analysis, timeline, duration_minutes, data_note } = sessionData;
+
+  const breakMinute = timeline.find((t) => t.is_break)?.minute;
+  const bandColor = average_band === 'High' ? '#f43f5e'
+    : average_band === 'Low' ? '#10b981' : '#f59e0b';
 
   // Custom Chart Tooltip
   const CustomTooltip = ({ active, payload }) => {
@@ -74,8 +79,13 @@ export default function SessionAnalytics() {
             Session Analytics & Load Timeline
           </h2>
           <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-            Temporal cognitive load progression over a 15-minute monitored coding session
+            Temporal load progression over a {duration_minutes}-minute simulated coding session
           </p>
+          {data_note && (
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {data_note}
+            </p>
+          )}
         </div>
 
         <button className="btn-secondary" onClick={loadSimulatedSession} style={{ fontSize: '0.85rem' }}>
@@ -87,29 +97,37 @@ export default function SessionAnalytics() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <div className="glass-card" style={{ padding: '20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>SESSION DURATION</span>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>15m 00s</div>
-          <div style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '4px' }}>Monitored session</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
+            {duration_minutes}m 00s
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '4px' }}>Simulated session</div>
         </div>
 
         <div className="glass-card" style={{ padding: '20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>AVERAGE WORKLOAD</span>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>{average_score} / 100</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Medium aggregate load</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: bandColor, marginTop: '4px' }}>{average_score} / 100</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {average_band} aggregate band
+          </div>
         </div>
 
         <div className="glass-card" style={{ padding: '20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>PEAK COGNITIVE LOAD</span>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f43f5e', marginTop: '4px' }}>{peak_score} / 100</div>
-          <div style={{ fontSize: '0.75rem', color: '#f43f5e', marginTop: '4px' }}>High load spike (Min 10-11)</div>
+          <div style={{ fontSize: '0.75rem', color: '#f43f5e', marginTop: '4px' }}>
+            Peak at minute {peak_minute}
+          </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>RECOVERY IMPACT</span>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
-            -{recovery_analysis.recovery_points} Pts
+        {recovery_analysis && (
+          <div className="glass-card" style={{ padding: '20px' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>RECOVERY IMPACT</span>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+              -{recovery_analysis.recovery_points} Pts
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '4px' }}>Post-break rest delta</div>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '4px' }}>Post-break rest delta</div>
-        </div>
+        )}
       </div>
 
       {/* Main Graph: 15-Minute Load Curve */}
@@ -142,6 +160,7 @@ export default function SessionAnalytics() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
         
         {/* Recovery Feature Card */}
+        {recovery_analysis && (
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -154,11 +173,15 @@ export default function SessionAnalytics() {
 
             <div style={{ background: '#0d1320', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-subtle)', margin: '16px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Pre-Break Load (Min 11)</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Pre-Break Load{breakMinute ? ` (Min ${breakMinute - 1})` : ''}
+                </span>
                 <span style={{ fontWeight: 700, color: '#f43f5e' }}>{recovery_analysis.pre_break_score} / 100</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Post-Break Load (Min 13)</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Post-Break Load (Min {duration_minutes})
+                </span>
                 <span style={{ fontWeight: 700, color: '#10b981' }}>{recovery_analysis.post_break_score} / 100</span>
               </div>
               <hr style={{ borderColor: 'var(--border-subtle)', margin: '8px 0' }} />
@@ -170,9 +193,10 @@ export default function SessionAnalytics() {
           </div>
 
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px' }}>
-            💡 A decrease in model score post-break reflects observed behavioral normalization, not proof of complete psychological recovery.
+            💡 {recovery_analysis.message} This reflects an observed behavioral change, not proof of psychological recovery.
           </div>
         </div>
+        )}
 
         {/* Time in States Card */}
         <div className="glass-card">

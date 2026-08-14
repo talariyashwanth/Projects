@@ -14,13 +14,22 @@ BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 NB_DIR = os.path.join(BASE, "notebooks")
 
 
+def _lines(text):
+    """
+    Split into a list of lines, each KEEPING its trailing newline except the
+    last. The .ipynb format expects this; without the newlines every line gets
+    concatenated into one and the cell is a syntax error.
+    """
+    return text.strip().splitlines(keepends=True)
+
+
 def md(text):
-    return {"cell_type": "markdown", "metadata": {}, "source": text.strip().split("\n")}
+    return {"cell_type": "markdown", "metadata": {}, "source": _lines(text)}
 
 
 def code(text):
     return {"cell_type": "code", "execution_count": None, "metadata": {},
-            "outputs": [], "source": text.strip().split("\n")}
+            "outputs": [], "source": _lines(text)}
 
 
 def notebook(cells):
@@ -264,6 +273,10 @@ from sklearn.model_selection import cross_validate, StratifiedGroupKFold
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score,
                              confusion_matrix, classification_report, ConfusionMatrixDisplay)
 from train import build_model_candidates
+
+# `train` sets matplotlib's headless Agg backend for script use, which suppresses
+# inline figures. Restore the notebook backend so the charts below render.
+%matplotlib inline
 
 candidates = build_model_candidates()
 for name, cfg in candidates.items():

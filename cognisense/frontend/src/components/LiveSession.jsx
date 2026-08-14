@@ -6,6 +6,7 @@ export default function LiveSession({ onUpdateDashboard }) {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [livePrediction, setLivePrediction] = useState(null);
+  const [liveError, setLiveError] = useState(null);
   const [eventStats, setEventStats] = useState({
     keystrokeCount: 0,
     backspaceCount: 0,
@@ -94,6 +95,13 @@ export default function LiveSession({ onUpdateDashboard }) {
       const durationSec = Math.max((Date.now() - sessionStartTimeRef.current) / 1000.0, 1.0);
       const wordCount = textInput.trim() ? textInput.trim().split(/\s+/).length : 0;
 
+      // Nothing has happened yet — don't ask the model to score an empty window.
+      const hasActivity =
+        keystrokesRef.current > 0 ||
+        clicksRef.current > 0 ||
+        mousePosRef.current.length > 0;
+      if (!hasActivity) return;
+
       const rawPayload = {
         duration_seconds: durationSec,
         keystroke_timestamps: timestampsRef.current,
@@ -104,7 +112,8 @@ export default function LiveSession({ onUpdateDashboard }) {
         click_count: clicksRef.current,
         idle_periods_seconds: idlePeriodsRef.current,
         error_count: backspacesRef.current,
-        attempt_count: keystrokesRef.current,
+        // attempt_count is a denominator for error_rate, so the API requires >= 1.
+        attempt_count: Math.max(keystrokesRef.current, 1),
         response_time_sec: durationSec > 0 ? durationSec / Math.max(wordCount, 1) : 4.0,
         retry_count: backspacesRef.current > 5 ? 2 : 0,
         context_switches: contextSwitchesRef.current
@@ -113,6 +122,7 @@ export default function LiveSession({ onUpdateDashboard }) {
       try {
         const res = await predictRawEvents(rawPayload);
         setLivePrediction(res);
+        setLiveError(null);
         if (onUpdateDashboard) onUpdateDashboard(res);
 
         // Update display stats
@@ -130,6 +140,7 @@ export default function LiveSession({ onUpdateDashboard }) {
         });
       } catch (err) {
         console.error("Live predict error:", err);
+        setLiveError(err.message);
       }
     }, 3000);
 
@@ -190,15 +201,21 @@ export default function LiveSession({ onUpdateDashboard }) {
     try {
       const res = await predictCognitiveLoad(presetFeats);
       setLivePrediction(res);
+      setLiveError(null);
       if (onUpdateDashboard) onUpdateDashboard(res);
     } catch (e) {
-      console.error(e);
+      console.error('Preset prediction failed:', e);
+      setLiveError(e.message);
     }
   };
 
-  const state = livePrediction?.predicted_state || 'Low';
-  const score = livePrediction?.cognitive_load_score || 25;
-  const stateColor = state === 'High' ? '#f43f5e' : state === 'Medium' ? '#f59e0b' : '#10b981';
+  // Before the first real prediction arrives there is nothing to report, so the
+  // panel shows an explicit idle state rather than inventing a plausible score.
+  const hasPrediction = livePrediction != null;
+  const state = livePrediction?.predicted_state ?? null;
+  const score = livePrediction?.cognitive_load_score ?? null;
+  const stateColor = !hasPrediction ? 'var(--text-muted)'
+    : state === 'High' ? '#f43f5e' : state === 'Medium' ? '#f59e0b' : '#10b981';
 
   return (
     <div
@@ -311,18 +328,34 @@ export default function LiveSession({ onUpdateDashboard }) {
                 fontSize: '0.78rem',
                 fontWeight: 700
               }}>
-                LOAD: {state.toUpperCase()}
+                LOAD: {hasPrediction ? state.toUpperCase() : 'AWAITING DATA'}
               </span>
             </div>
+
+            {liveError && (
+              <div style={{
+                background: 'rgba(244, 63, 94, 0.1)',
+                border: '1px solid rgba(244, 63, 94, 0.35)',
+                color: '#fb7185',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                marginBottom: '14px'
+              }}>
+                Prediction failed: {liveError}
+              </div>
+            )}
 
             {/* Score Display Bar */}
             <div style={{ background: '#0a0f1d', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-subtle)', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cognitive Workload Score</span>
-                <span style={{ fontSize: '2rem', fontWeight: 800, color: stateColor }}>{score} / 100</span>
+                <span style={{ fontSize: '2rem', fontWeight: 800, color: stateColor }}>
+                  {hasPrediction ? `${score} / 100` : '— / 100'}
+                </span>
               </div>
               <div style={{ height: '8px', width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', marginTop: '8px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${score}%`, background: stateColor, transition: 'width 0.4s ease' }} />
+                <div style={{ height: '100%', width: `${hasPrediction ? score : 0}%`, background: stateColor, transition: 'width 0.4s ease' }} />
               </div>
             </div>
 
