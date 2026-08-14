@@ -1,0 +1,74 @@
+{
+  "typing_speed_wpm": {
+    "mean": 44.9324,
+    "std": 17.5352,
+    "high_load_direction": -1,
+    "spearman_with_load": -0.4671
+  },
+  "avg_keystroke_interval_ms": {
+    "mean": 268.2453,
+    "std": 89.9219,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.5591
+  },
+  "backspace_ratio": {
+    "mean": 0.1059,
+    "std": 0.0632,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.6015
+  },
+  "pause_frequency_per_min": {
+    "mean": 5.7354,
+    "std": 3.7721,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.7084
+  },
+  "mouse_velocity_px_s": {
+    "mean": 286.859,
+    "std": 114.8879,
+    "high_load_direction": -1,
+    "spearman_with_load": -0.5374
+  },
+  "mouse_distance_px": {
+    "mean": 1834.065,
+    "std": 651.1228,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.4962
+  },
+  "click_frequency_per_min": {
+    "mean": 21.3192,
+    "std": 8.2167,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.5443
+  },
+  "idle_time_seconds": {
+    "mean": 7.5142,
+    "std": 5.1233,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.569
+  },
+  "error_rate": {
+    "mean": 0.1032,
+    "std": 0.0693,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.6352
+  },
+  "response_time_seconds": {
+    "mean": 7.9974,
+    "std": 4.4201,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.6651
+  },
+  "retry_count": {
+    "mean": 2.0916,
+    "std": 1.8727,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.5503
+  },
+  "context_switches_per_min": {
+    "mean": 4.3159,
+    "std": 3.2271,
+    "high_load_direction": 1,
+    "spearman_with_load": 0.6287
+  }
+}

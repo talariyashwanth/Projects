@@ -1,50 +1,74 @@
 [
   {
-    "feature": "response_time_seconds",
-    "importance": 0.2082
-  },
-  {
-    "feature": "error_rate",
-    "importance": 0.1917
-  },
-  {
-    "feature": "typing_speed_wpm",
-    "importance": 0.1156
-  },
-  {
-    "feature": "avg_keystroke_interval_ms",
-    "importance": 0.1132
-  },
-  {
-    "feature": "mouse_velocity_px_s",
-    "importance": 0.0854
-  },
-  {
-    "feature": "backspace_ratio",
-    "importance": 0.0667
-  },
-  {
-    "feature": "mouse_distance_px",
-    "importance": 0.0666
-  },
-  {
     "feature": "pause_frequency_per_min",
-    "importance": 0.0559
+    "importance": 0.178,
+    "raw_f1_drop": 0.07784,
+    "std": 0.01034
+  },
+  {
+    "feature": "response_time_seconds",
+    "importance": 0.1572,
+    "raw_f1_drop": 0.06871,
+    "std": 0.01105
   },
   {
     "feature": "idle_time_seconds",
-    "importance": 0.0493
+    "importance": 0.1098,
+    "raw_f1_drop": 0.048,
+    "std": 0.0099
   },
   {
     "feature": "context_switches_per_min",
-    "importance": 0.0291
+    "importance": 0.1045,
+    "raw_f1_drop": 0.04571,
+    "std": 0.00911
   },
   {
     "feature": "click_frequency_per_min",
-    "importance": 0.0127
+    "importance": 0.0895,
+    "raw_f1_drop": 0.03913,
+    "std": 0.00987
   },
   {
     "feature": "retry_count",
-    "importance": 0.0057
+    "importance": 0.0783,
+    "raw_f1_drop": 0.03425,
+    "std": 0.00658
+  },
+  {
+    "feature": "avg_keystroke_interval_ms",
+    "importance": 0.07,
+    "raw_f1_drop": 0.03062,
+    "std": 0.01147
+  },
+  {
+    "feature": "error_rate",
+    "importance": 0.0635,
+    "raw_f1_drop": 0.02775,
+    "std": 0.00755
+  },
+  {
+    "feature": "typing_speed_wpm",
+    "importance": 0.0477,
+    "raw_f1_drop": 0.02088,
+    "std": 0.00667
+  },
+  {
+    "feature": "mouse_distance_px",
+    "importance": 0.047,
+    "raw_f1_drop": 0.02054,
+    "std": 0.00542
+  },
+  {
+    "feature": "mouse_velocity_px_s",
+    "importance": 0.0375,
+    "raw_f1_drop": 0.01639,
+    "std": 0.0056
+  },
+  {
+    "feature": "backspace_ratio",
+    "importance": 0.0169,
+    "raw_f1_drop": 0.00738,
+    "std": 0.00452
   }
 ]

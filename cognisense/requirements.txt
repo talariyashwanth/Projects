@@ -1,0 +1,24 @@
+# Pinned to the versions this project was developed and tested against.
+# Regenerate with: pip freeze
+
+# Core ML & data
+scikit-learn==1.9.0
+pandas==3.0.5
+numpy==2.4.3
+xgboost==3.2.0
+joblib==1.5.3
+
+# Visualization (evaluation plots + notebooks)
+matplotlib==3.11.1
+seaborn==0.13.2
+
+# Explainability
+shap==0.51.0
+
+# Backend API
+fastapi==0.133.1
+uvicorn==0.41.0
+pydantic==2.13.4
+
+# Testing
+pytest==9.1.1

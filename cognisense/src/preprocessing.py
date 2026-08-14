@@ -1,12 +1,18 @@
 """
 Preprocessing Module for Cognisense
 Handles data cleaning, feature validation, splitting, and scaling.
+
+Note on splitting strategy: when the dataset carries a `subject_id`, the
+train/test split is SUBJECT-AWARE (GroupShuffleSplit). Behavioural windows
+from one person are highly correlated, so allowing the same subject into
+both train and test leaks individual baselines and inflates scores. Held-out
+subjects measure what we actually care about: generalisation to a NEW person.
 """
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GroupShuffleSplit
 
 FEATURE_COLUMNS = [
     "typing_speed_wpm",
@@ -24,45 +30,75 @@ FEATURE_COLUMNS = [
 ]
 
 TARGET_COLUMN = "cognitive_load"
+GROUP_COLUMN = "subject_id"
 CLASS_NAMES = ["Low", "Medium", "High"]
+
+# Physically realistic bounds used for sanity clipping.
+CLIP_BOUNDS = {
+    "typing_speed_wpm": (0, 200),
+    "avg_keystroke_interval_ms": (10, 2000),
+    "backspace_ratio": (0.0, 1.0),
+    "pause_frequency_per_min": (0, 60),
+    "mouse_velocity_px_s": (0, 5000),
+    "mouse_distance_px": (0, 50000),
+    "click_frequency_per_min": (0, 200),
+    "idle_time_seconds": (0, 300),
+    "error_rate": (0.0, 1.0),
+    "response_time_seconds": (0, 120),
+    "retry_count": (0, 50),
+    "context_switches_per_min": (0, 60),
+}
+
 
 def clean_and_validate_data(df: pd.DataFrame) -> pd.DataFrame:
     """Validates schema, drops nulls, clips invalid numeric bounds."""
+    missing = [c for c in FEATURE_COLUMNS + [TARGET_COLUMN] if c not in df.columns]
+    if missing:
+        raise ValueError(f"Dataset is missing required columns: {missing}")
+
     df_clean = df.copy()
-    
-    # Fill or drop missing values
     df_clean = df_clean.dropna(subset=FEATURE_COLUMNS + [TARGET_COLUMN])
-    
-    # Clip numeric bounds for sanity
-    df_clean["typing_speed_wpm"] = df_clean["typing_speed_wpm"].clip(0, 200)
-    df_clean["avg_keystroke_interval_ms"] = df_clean["avg_keystroke_interval_ms"].clip(10, 2000)
-    df_clean["backspace_ratio"] = df_clean["backspace_ratio"].clip(0.0, 1.0)
-    df_clean["pause_frequency_per_min"] = df_clean["pause_frequency_per_min"].clip(0, 60)
-    df_clean["mouse_velocity_px_s"] = df_clean["mouse_velocity_px_s"].clip(0, 5000)
-    df_clean["mouse_distance_px"] = df_clean["mouse_distance_px"].clip(0, 50000)
-    df_clean["click_frequency_per_min"] = df_clean["click_frequency_per_min"].clip(0, 200)
-    df_clean["idle_time_seconds"] = df_clean["idle_time_seconds"].clip(0, 300)
-    df_clean["error_rate"] = df_clean["error_rate"].clip(0.0, 1.0)
-    df_clean["response_time_seconds"] = df_clean["response_time_seconds"].clip(0, 120)
-    df_clean["retry_count"] = df_clean["retry_count"].clip(0, 50)
-    df_clean["context_switches_per_min"] = df_clean["context_switches_per_min"].clip(0, 60)
-    
+
+    for column, (low, high) in CLIP_BOUNDS.items():
+        df_clean[column] = df_clean[column].clip(low, high)
+
     return df_clean
 
+
 def prepare_train_test_data(df: pd.DataFrame, test_size=0.2, random_state=42):
-    """Splits features X and target y with stratification, fits StandardScaler."""
+    """
+    Splits features X and target y, then fits a StandardScaler on train only.
+
+    Uses a subject-aware split when `subject_id` is present so that no
+    individual appears in both train and test; falls back to a stratified
+    random split otherwise.
+    """
     df_clean = clean_and_validate_data(df)
+
     X = df_clean[FEATURE_COLUMNS]
     y = df_clean[TARGET_COLUMN]
-    
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    
+
+    if GROUP_COLUMN in df_clean.columns and df_clean[GROUP_COLUMN].nunique() > 1:
+        groups = df_clean[GROUP_COLUMN]
+        splitter = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+        train_idx, test_idx = next(splitter.split(X, y, groups=groups))
+
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+        groups_train = groups.iloc[train_idx]
+        split_strategy = "subject-aware (GroupShuffleSplit, held-out subjects)"
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state, stratify=y
+        )
+        groups_train = None
+        split_strategy = "stratified random split"
+
+    # Scaler is fit on training data only -- never on the test set.
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-    
+
     return {
         "X_train": X_train,
         "X_test": X_test,
@@ -70,5 +106,7 @@ def prepare_train_test_data(df: pd.DataFrame, test_size=0.2, random_state=42):
         "X_test_scaled": X_test_scaled,
         "y_train": y_train,
         "y_test": y_test,
-        "scaler": scaler
+        "groups_train": groups_train,
+        "scaler": scaler,
+        "split_strategy": split_strategy,
     }
