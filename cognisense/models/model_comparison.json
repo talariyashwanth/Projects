@@ -1,0 +1,201 @@
+{
+  "best_model": "Random Forest",
+  "class_names": [
+    "Low",
+    "Medium",
+    "High"
+  ],
+  "feature_columns": [
+    "typing_speed_wpm",
+    "avg_keystroke_interval_ms",
+    "backspace_ratio",
+    "pause_frequency_per_min",
+    "mouse_velocity_px_s",
+    "mouse_distance_px",
+    "click_frequency_per_min",
+    "idle_time_seconds",
+    "error_rate",
+    "response_time_seconds",
+    "retry_count",
+    "context_switches_per_min"
+  ],
+  "models": {
+    "Logistic Regression": {
+      "description": "Linear baseline model with high interpretability",
+      "test_accuracy": 0.995,
+      "precision_macro": 0.995,
+      "recall_macro": 0.995,
+      "f1_macro": 0.995,
+      "cv_accuracy_mean": 0.9971,
+      "cv_f1_mean": 0.9971,
+      "confusion_matrix": [
+        [
+          199,
+          1,
+          0
+        ],
+        [
+          2,
+          198,
+          0
+        ],
+        [
+          0,
+          0,
+          200
+        ]
+      ],
+      "classification_report": {
+        "Low": {
+          "precision": 0.9900497512437811,
+          "recall": 0.995,
+          "f1-score": 0.9925187032418953,
+          "support": 200.0
+        },
+        "Medium": {
+          "precision": 0.9949748743718593,
+          "recall": 0.99,
+          "f1-score": 0.9924812030075187,
+          "support": 200.0
+        },
+        "High": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 200.0
+        },
+        "accuracy": 0.995,
+        "macro avg": {
+          "precision": 0.9950082085385468,
+          "recall": 0.995,
+          "f1-score": 0.9949999687498047,
+          "support": 600.0
+        },
+        "weighted avg": {
+          "precision": 0.9950082085385468,
+          "recall": 0.995,
+          "f1-score": 0.9949999687498047,
+          "support": 600.0
+        }
+      }
+    },
+    "Random Forest": {
+      "description": "Ensemble decision tree model capturing nonlinear interaction rules",
+      "test_accuracy": 0.9967,
+      "precision_macro": 0.9967,
+      "recall_macro": 0.9967,
+      "f1_macro": 0.9967,
+      "cv_accuracy_mean": 0.9942,
+      "cv_f1_mean": 0.9942,
+      "confusion_matrix": [
+        [
+          198,
+          2,
+          0
+        ],
+        [
+          0,
+          200,
+          0
+        ],
+        [
+          0,
+          0,
+          200
+        ]
+      ],
+      "classification_report": {
+        "Low": {
+          "precision": 1.0,
+          "recall": 0.99,
+          "f1-score": 0.9949748743718593,
+          "support": 200.0
+        },
+        "Medium": {
+          "precision": 0.9900990099009901,
+          "recall": 1.0,
+          "f1-score": 0.9950248756218906,
+          "support": 200.0
+        },
+        "High": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 200.0
+        },
+        "accuracy": 0.9966666666666667,
+        "macro avg": {
+          "precision": 0.9966996699669967,
+          "recall": 0.9966666666666667,
+          "f1-score": 0.9966665833312499,
+          "support": 600.0
+        },
+        "weighted avg": {
+          "precision": 0.9966996699669968,
+          "recall": 0.9966666666666667,
+          "f1-score": 0.99666658333125,
+          "support": 600.0
+        }
+      }
+    },
+    "Gradient Boosting": {
+      "description": "Sequential boosting model optimized for complex feature interactions",
+      "test_accuracy": 0.995,
+      "precision_macro": 0.9951,
+      "recall_macro": 0.995,
+      "f1_macro": 0.995,
+      "cv_accuracy_mean": 0.99,
+      "cv_f1_mean": 0.99,
+      "confusion_matrix": [
+        [
+          198,
+          2,
+          0
+        ],
+        [
+          0,
+          200,
+          0
+        ],
+        [
+          0,
+          1,
+          199
+        ]
+      ],
+      "classification_report": {
+        "Low": {
+          "precision": 1.0,
+          "recall": 0.99,
+          "f1-score": 0.9949748743718593,
+          "support": 200.0
+        },
+        "Medium": {
+          "precision": 0.9852216748768473,
+          "recall": 1.0,
+          "f1-score": 0.9925558312655087,
+          "support": 200.0
+        },
+        "High": {
+          "precision": 1.0,
+          "recall": 0.995,
+          "f1-score": 0.9974937343358395,
+          "support": 200.0
+        },
+        "accuracy": 0.995,
+        "macro avg": {
+          "precision": 0.9950738916256158,
+          "recall": 0.995,
+          "f1-score": 0.995008146657736,
+          "support": 600.0
+        },
+        "weighted avg": {
+          "precision": 0.9950738916256158,
+          "recall": 0.995,
+          "f1-score": 0.9950081466577358,
+          "support": 600.0
+        }
+      }
+    }
+  }
+}
